@@ -1,5 +1,8 @@
 {
     "cmd_help": "Open het animatiemenu",
+    "cmd_emote_help": "Speel een animatie af (/e c om te annuleren)",
+    "cmd_emote_name_help": "Naam van de animatie",
+    "cmd_emote_body_help": "Optioneel: 'upper' alleen bovenlichaam",
     "ui_search_placeholder": "Zoeken...",
     "ui_category_gestures": "Gebaren",
     "ui_category_dances": "Dansen",

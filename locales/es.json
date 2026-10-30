@@ -1,5 +1,8 @@
 {
     "cmd_help": "Abrir el menú de animaciones",
+    "cmd_emote_help": "Reproducir una animación (/e c para cancelar)",
+    "cmd_emote_name_help": "Nombre de la animación",
+    "cmd_emote_body_help": "Opcional: 'upper' solo parte superior del cuerpo",
     "ui_search_placeholder": "Buscar...",
     "ui_category_gestures": "Gestos",
     "ui_category_dances": "Bailes",

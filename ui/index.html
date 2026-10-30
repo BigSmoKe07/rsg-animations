@@ -26,7 +26,8 @@
           <button v-for="cat in Categories" :key="cat.key" class="tab" :class="{ active: selectedCategory === cat.key }" @click="FilterCategory(cat.key)">{{ Locale[cat.locale] }}</button>
         </nav>
 
-        <input type="text" v-model="searchQuery" class="search-input" ref="search" :placeholder="Locale.searchPlaceholder">
+        <input type="text" v-model="searchQuery" class="search-input" :placeholder="Locale.searchPlaceholder"
+               @focus="SetTyping(true)" @blur="SetTyping(false)">
 
         <ul class="list">
           <li class="row" v-for="Animation in FilteredAnimations" :key="Animation.Label"

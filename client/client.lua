@@ -1,21 +1,34 @@
 local isMenuOpen = false
-local favorites = nil -- [label] = true, loaded once from the server
+local uiLoaded = false  -- animation list + locale are sent to the NUI only once
+local favorites = nil   -- [label] = true, loaded once from the server
+local current = nil     -- the animation we started, used by the cancel key
 
 ---------------------------------
 -- lookup / locale helpers
 ---------------------------------
-local AnimationsByLabel = {}
+local AnimationsByName = {} -- label, translated label and slug -> animation
+local UIAnimations = {}     -- slim copy sent to the NUI
 
-local function getLabelKey(label)
-    local key = label:lower():gsub('[^a-z0-9]+', '_'):gsub('^_+', ''):gsub('_+$', '')
-    return 'anim_' .. key
+local function slug(text)
+    return (text:lower():gsub('[^%w]+', '_'):gsub('^_+', ''):gsub('_+$', ''))
 end
 
 local function getDisplayLabel(label)
-    local key = getLabelKey(label)
+    local key = 'anim_' .. slug(label)
     local text = locale(key)
     if not text or text == key then return label end
     return text
+end
+
+local function addName(name, animation)
+    if name ~= '' and not AnimationsByName[name] then
+        AnimationsByName[name] = animation
+    end
+end
+
+local function findAnimation(name)
+    local lower = name:lower()
+    return AnimationsByName[lower] or AnimationsByName[slug(lower)]
 end
 
 local function getUILocale()
@@ -35,11 +48,26 @@ local function getUILocale()
     }
 end
 
--- build the lookup + translated labels once instead of on every open
+-- labels first so they win over a translated name that happens to collide
 for _, animation in ipairs(Config.Animations) do
     if animation.Label then
-        animation.DisplayLabel = getDisplayLabel(animation.Label)
-        AnimationsByLabel[animation.Label:lower()] = animation
+        addName(animation.Label:lower(), animation)
+        addName(slug(animation.Label), animation)
+    end
+end
+
+for _, animation in ipairs(Config.Animations) do
+    if animation.Label then
+        local display = getDisplayLabel(animation.Label)
+        addName(display:lower(), animation)
+        addName(slug(display), animation)
+
+        UIAnimations[#UIAnimations + 1] = {
+            Label = animation.Label,
+            DisplayLabel = display,
+            Category = animation.Category,
+            Type = animation.Type,
+        }
     end
 end
 
@@ -65,8 +93,17 @@ local function playEmote(emoteType, bodyMode)
 end
 
 local function stopAnimation()
+    current = nil
     ClearPedTasks(cache.ped)
     ClearPedSecondaryTask(cache.ped)
+end
+
+-- emotes have no cheap "still playing" check, so they count as playing until cancelled
+local function isPlaying()
+    if not current then return false end
+    if current.Type == 'Anim' then return IsEntityPlayingAnim(cache.ped, current.Dict, current.Body, 3) end
+    if current.Type == 'Scenario' then return IsPedUsingAnyScenario(cache.ped) end
+    return true
 end
 
 local function canAnimate()
@@ -85,7 +122,7 @@ local function playAnimationByName(animationName, bodyOption)
         return false, locale('err_anim_not_found'):format(tostring(animationName))
     end
 
-    local animation = AnimationsByLabel[animationName:lower()]
+    local animation = findAnimation(animationName)
     if not animation then
         return false, locale('err_anim_not_found'):format(animationName)
     end
@@ -102,17 +139,21 @@ local function playAnimationByName(animationName, bodyOption)
         ClearPedTasks(cache.ped)
     end
 
+    local ok = false
     if animation.Type == 'Anim' and animation.Dict and animation.Body then
         local flags = bodyMode == 'upper' and (animation.HalfBodyFlag or 31) or (animation.FullBodyFlag or animation.Flag or 0)
-        return playAnim(animation.Dict, animation.Body, flags)
+        ok = playAnim(animation.Dict, animation.Body, flags)
     elseif animation.Type == 'Emote' and animation.EmoteType then
-        return playEmote(animation.EmoteType, bodyMode)
+        ok = playEmote(animation.EmoteType, bodyMode)
     elseif animation.Type == 'Scenario' and animation.Scenario then
         TaskStartScenarioInPlace(cache.ped, joaat(animation.Scenario), -1, true, false, false, false)
-        return true
+        ok = true
+    else
+        return false, locale('err_anim_unsupported'):format(animation.Label)
     end
 
-    return false, locale('err_anim_unsupported'):format(animation.Label)
+    current = ok and animation or nil
+    return ok
 end
 
 exports('PlayAnimation', playAnimationByName)
@@ -124,8 +165,33 @@ exports('StopAnimation', stopAnimation)
 local function closeMenu()
     if not isMenuOpen then return end
     isMenuOpen = false
+    SetNuiFocusKeepInput(false)
     SetNuiFocus(false, false)
+    SendNUIMessage({ type = 'Close' })
     PlaySoundFrontend('BACK', 'RDRO_Character_Creator_Sounds', true, 0)
+end
+
+-- NUI focus swallows all game input, which kills push-to-talk. Keep game
+-- input alive and block everything except the allowed controls instead.
+local function menuInputLoop()
+    local allowed = Config.MenuAllowedControls or {}
+    while isMenuOpen do
+        for group = 0, 2 do
+            DisableAllControlActions(group)
+            for i = 1, #allowed do
+                EnableControlAction(group, allowed[i], true)
+            end
+        end
+        Wait(0)
+    end
+
+    -- Esc closes the menu; keep it from also opening the pause menu
+    local releaseAt = GetGameTimer() + 300
+    while GetGameTimer() < releaseAt do
+        DisableControlAction(0, 0x4A903C11, true) -- INPUT_FRONTEND_PAUSE_ALTERNATE
+        DisableControlAction(0, 0xD82E0BD2, true) -- INPUT_FRONTEND_PAUSE
+        Wait(0)
+    end
 end
 
 local function openMenu()
@@ -137,34 +203,85 @@ local function openMenu()
         for _, label in ipairs(list) do favorites[label] = true end
     end
 
-    for _, animation in ipairs(Config.Animations) do
-        animation.Favorite = favorites[animation.Label] == true
-    end
+    local favoriteList = {}
+    for label in pairs(favorites) do favoriteList[#favoriteList + 1] = label end
 
     isMenuOpen = true
     SendNUIMessage({
         type = 'Open',
-        Animations = Config.Animations,
-        Locale = getUILocale(),
+        Animations = not uiLoaded and UIAnimations or nil,
+        Locale = not uiLoaded and getUILocale() or nil,
+        Favorites = favoriteList,
     })
+    uiLoaded = true
+
     SetNuiFocus(true, true)
+    SetNuiFocusKeepInput(true)
+    CreateThread(menuInputLoop)
     PlaySoundFrontend('BACK', 'RDRO_Character_Creator_Sounds', true, 0)
 end
 
 RegisterCommand(Config.CommandOpen, openMenu, false)
 
+-- /e <name> [upper|full], /e or /e c cancels
+RegisterCommand(Config.CommandEmote, function(_, args)
+    local body = args[#args] and args[#args]:lower()
+    if body == 'upper' or body == 'full' then
+        args[#args] = nil
+    else
+        body = nil
+    end
+
+    local name = table.concat(args, ' ')
+    if name == '' or name:lower() == 'c' then return stopAnimation() end
+
+    local ok, err = playAnimationByName(name, body)
+    if not ok and err then
+        lib.notify({ description = err, type = 'error' })
+    end
+end, false)
+
 CreateThread(function()
     TriggerEvent('chat:addSuggestion', '/' .. Config.CommandOpen, locale('cmd_help'))
+    TriggerEvent('chat:addSuggestion', '/' .. Config.CommandEmote, locale('cmd_emote_help'), {
+        { name = 'name', help = locale('cmd_emote_name_help') },
+        { name = 'upper', help = locale('cmd_emote_body_help') },
+    })
+end)
+
+-- open / cancel keys
+CreateThread(function()
+    local openKey, cancelKey = Config.OpenKey, Config.CancelKey
+    if not openKey and not cancelKey then return end
+
+    while true do
+        if isMenuOpen or not LocalPlayer.state.isLoggedIn then
+            Wait(500)
+        else
+            Wait(0)
+            if openKey and IsControlJustReleased(0, openKey) then
+                openMenu()
+            elseif cancelKey and current and IsControlJustReleased(0, cancelKey) then
+                if isPlaying() then
+                    stopAnimation()
+                else
+                    current = nil
+                end
+            end
+        end
+    end
 end)
 
 -- reset the favourites cache on character switch
 RegisterNetEvent('RSGCore:Client:OnPlayerUnload', function()
     favorites = nil
+    current = nil
     closeMenu()
 end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() and isMenuOpen then
+        SetNuiFocusKeepInput(false)
         SetNuiFocus(false, false)
     end
 end)
@@ -189,10 +306,20 @@ RegisterNUICallback('Close', function(_, cb)
     closeMenu()
 end)
 
+-- while the search box has focus, keys must not reach the game (typing the
+-- push-to-talk key would open the mic)
+RegisterNUICallback('Typing', function(data, cb)
+    cb('ok')
+    if isMenuOpen then
+        SetNuiFocusKeepInput(not (type(data) == 'table' and data.state == true))
+    end
+end)
+
 RegisterNUICallback('Favorite', function(data, cb)
     cb('ok')
     if type(data) ~= 'table' or type(data.label) ~= 'string' or not favorites then return end
-    if not AnimationsByLabel[data.label:lower()] then return end
+    local animation = findAnimation(data.label)
+    if not animation or animation.Label ~= data.label then return end
 
     local state = data.favorite == true
     favorites[data.label] = state or nil

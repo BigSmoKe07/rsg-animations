@@ -1,5 +1,8 @@
 {
     "cmd_help": "Άνοιγμα μενού κινήσεων",
+    "cmd_emote_help": "Αναπαραγωγή κίνησης (/e c για ακύρωση)",
+    "cmd_emote_name_help": "Όνομα κίνησης",
+    "cmd_emote_body_help": "Προαιρετικό: 'upper' μόνο για το πάνω μέρος του σώματος",
     "ui_search_placeholder": "Αναζήτηση...",
     "ui_category_gestures": "Χειρονομίες",
     "ui_category_dances": "Χοροί",

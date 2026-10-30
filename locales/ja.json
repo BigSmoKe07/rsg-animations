@@ -1,5 +1,8 @@
 {
     "cmd_help": "アニメーションメニューを開く",
+    "cmd_emote_help": "アニメーションを再生 (/e c でキャンセル)",
+    "cmd_emote_name_help": "アニメーション名",
+    "cmd_emote_body_help": "任意: 'upper' で上半身のみ",
     "ui_search_placeholder": "検索...",
     "ui_category_gestures": "ジェスチャー",
     "ui_category_dances": "ダンス",

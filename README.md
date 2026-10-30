@@ -24,6 +24,8 @@
 - 🧍 **Full or upper-body playback** via the export (upper body works on horseback)
 - 🌍 **Translated** – en, de, el, es, fr, ja, nl, pl, pt-br, ro (menu text *and* animation names)
 - 🔒 **Server-validated favourites** – only labels from the config are stored, capped and rate-limited
+- ⌨️ **FiveM-style controls** – **F4** opens the menu, `/e <name>` plays any animation, **X** cancels
+- 🎙️ **Push-to-talk works while the menu is open** – game input stays alive, only whitelisted controls get through (follows each player's own keybind)
 
 ---
 
@@ -37,7 +39,7 @@
    ensure rsg-core
    ensure rsg-animations
    ```
-4. Restart the server and use `/anim` in-game.
+4. Restart the server and press **F4** or use `/anim` in-game.
 
 ---
 
@@ -52,7 +54,17 @@ Translations live in `locales/*.json`. Animation names use the key `anim_<label>
 
 ## ⚙️ Configuration (`shared/config.lua`)
 ```lua
-Config.CommandOpen = 'anim' -- command that opens the menu
+Config.CommandOpen = 'anim'  -- opens the menu
+Config.CommandEmote = 'e'    -- /e <name> [upper], /e c to cancel
+
+-- input action hashes, set to false to disable
+Config.OpenKey = 0x1F6D95E5   -- F4, opens the menu
+Config.CancelKey = 0x8CC9CD42 -- X, cancels the current animation
+
+-- controls that keep working while the menu has focus
+Config.MenuAllowedControls = {
+    0x4BC9DABB, -- INPUT_PUSH_TO_TALK
+}
 
 Config.Animations = {
     {
@@ -94,7 +106,10 @@ exports['rsg-animations']:StopAnimation()
 ---
 
 ## 🕹️ Usage
-- `/anim` opens the menu, **Esc** closes it.
+- **F4** or `/anim` opens the menu, **Esc** closes it.
+- `/e <name>` plays an animation by label, translated name or slug (`/e tip hat`, `/e tip_hat`); add `upper` for upper body only (`/e wave upper`).
+- **X**, `/e c` or `/e` cancels the current animation.
+- Push-to-talk keeps working while the menu is open. While you type in the search box, keys go to the menu only.
 - Left-click a row to play; right-click or click the star to (un)favourite.
 - The bottom button stops the current animation.
 

@@ -37,22 +37,34 @@ createApp({
       }
       const query = this.searchQuery.trim().toLowerCase()
       if (query) {
-        filtered = filtered.filter(a => (a.DisplayLabel || a.Label).toLowerCase().includes(query))
+        filtered = filtered.filter(a => a.Search.includes(query))
       }
       return filtered
     },
   },
   methods: {
     Message(event) {
-      if (event.data.type === 'Open') {
-        this.Animations = event.data.Animations || []
-        this.Locale = event.data.Locale || {}
+      const data = event.data
+      if (data.type === 'Open') {
+        // the list and locale only arrive on the first open
+        if (data.Animations) {
+          this.Animations = data.Animations.map(a => ({
+            ...a,
+            Favorite: false,
+            Search: `${(a.DisplayLabel || a.Label).toLowerCase()} ${a.Label.toLowerCase()}`,
+          }))
+        }
+        if (data.Locale) this.Locale = data.Locale
+        const favorites = new Set(data.Favorites || [])
+        this.Animations.forEach(a => { a.Favorite = favorites.has(a.Label) })
         this.Show = true
-        this.$nextTick(() => this.$refs.search && this.$refs.search.focus())
+      } else if (data.type === 'Close') {
+        this.Show = false
+        this.searchQuery = ''
       }
     },
     TypeIcon(type) {
-      return type === 'Emote' ? '\u263A' : type === 'Scenario' ? '\u2691' : '\u2726'
+      return type === 'Emote' ? '☺' : type === 'Scenario' ? '⚑' : '✦'
     },
     CategoryLabel(category) {
       const cat = this.Categories.find(c => c.key === category)
@@ -63,6 +75,9 @@ createApp({
     },
     StopAnim() {
       post('StopAnim')
+    },
+    SetTyping(state) {
+      post('Typing', { state })
     },
     onKeypress(event) {
       if (this.Show && event.key === 'Escape') this.Close()

@@ -1,5 +1,8 @@
 {
     "cmd_help": "Deschide meniul de animații",
+    "cmd_emote_help": "Redă o animație (/e c pentru anulare)",
+    "cmd_emote_name_help": "Numele animației",
+    "cmd_emote_body_help": "Opțional: 'upper' doar partea superioară a corpului",
     "ui_search_placeholder": "Caută...",
     "ui_category_gestures": "Gesturi",
     "ui_category_dances": "Dansuri",

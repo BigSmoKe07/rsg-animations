@@ -1,6 +1,17 @@
 Config = {}
 
-Config.CommandOpen = 'anim'
+Config.CommandOpen = 'anim'  -- opens the menu
+Config.CommandEmote = 'e'    -- /e <name> [upper], /e c to cancel
+
+-- input action hashes, set to false to disable
+Config.OpenKey = 0x1F6D95E5   -- F4, opens the menu
+Config.CancelKey = 0x8CC9CD42 -- X, cancels the current animation
+
+-- controls that keep working while the menu has focus; these are input
+-- actions, so they follow whatever key each player has bound them to
+Config.MenuAllowedControls = {
+    0x4BC9DABB, -- INPUT_PUSH_TO_TALK
+}
 
 Config.Animations = {
     -- {

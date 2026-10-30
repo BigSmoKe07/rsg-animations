@@ -1,5 +1,8 @@
 {
     "cmd_help": "Animationsmenü öffnen",
+    "cmd_emote_help": "Animation abspielen (/e c zum Abbrechen)",
+    "cmd_emote_name_help": "Name der Animation",
+    "cmd_emote_body_help": "Optional: 'upper' nur Oberkörper",
     "ui_search_placeholder": "Suchen...",
     "ui_category_gestures": "Gesten",
     "ui_category_dances": "Tänze",

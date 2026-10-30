@@ -1,5 +1,8 @@
 {
     "cmd_help": "Open the animations menu",
+    "cmd_emote_help": "Play an animation (/e c to cancel)",
+    "cmd_emote_name_help": "Animation name",
+    "cmd_emote_body_help": "Optional: 'upper' for upper body only",
     "ui_search_placeholder": "Search...",
     "ui_category_gestures": "Gestures",
     "ui_category_dances": "Dances",
